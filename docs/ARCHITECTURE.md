@@ -1,30 +1,17 @@
 # Architecture
 
-## Purpose
+`dev-env-doctor` provides a portable, dependency-free development environment verification engine.
 
-`github.com/Trysac/u175-dev-env-doctor` is a small, dependency-free Go library: Diagnose a development environment from a JSON config: required tools and version ranges, environment variables and files, with an injectable command runner and CI exit codes
+## Core Components
 
-## Shape
+1. **Configuration (`Config`, `LoadConfig`)**:
+   Parses and strictly validates JSON definitions. Rejects unknown keys, invalid regular expressions without capture groups, invalid version formats, and path traversal attempts in file lists.
 
-```text
-caller code --> package devenvdoctor (repository root)
-                    |
-                    +-- pure functions, no I/O, no global mutable state
-                    +-- internal/ (optional private helpers)
-```
+2. **Version Comparison (`CompareVersions`)**:
+   Evaluates 1 to 3 numeric decimal parts with up to 9 digits each. Treats absent sub-versions as 0 (`1.22` == `1.22.0`).
 
-- **Public API**: every exported identifier of the root package. Unexported identifiers and
-  `internal/` packages may change without a major version.
-- **Errors**: invalid input returns an error; exported sentinel errors (such as `ErrBlank`) let
-  callers branch with `errors.Is`. The library never panics on input, prints or exits.
-- **Side effects**: none. If a feature needs I/O, accept an interface (`io.Reader` or a small
-  custom one) instead of opening resources, and record the choice in an ADR.
+3. **Runner Interface (`Runner`, `ExecRunner`)**:
+   Decouples command execution from system calls. Production runs use `os/exec` with 64 KiB buffer limits, while tests use mock runners.
 
-## Quality contract
-
-`scripts/check` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
-
-## Decisions
-
-Architecture decisions are recorded in [decisions/](decisions/) as numbered ADRs.
+4. **Check Engine (`Check`)**:
+   Evaluates tools, environment variables, and filesystem entries in a deterministic sequence, returning a unified `Report`.

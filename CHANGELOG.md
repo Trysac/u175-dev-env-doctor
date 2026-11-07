@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add devenvdoctor library and dev-env-doctor CLI for declarative environment verification.
 - Initial project structure from the factory utility template.

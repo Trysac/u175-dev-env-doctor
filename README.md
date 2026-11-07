@@ -1,23 +1,12 @@
 # dev-env-doctor
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/Trysac/u175-dev-env-doctor.svg)](https://pkg.go.dev/github.com/Trysac/u175-dev-env-doctor)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/Trysac/u175-dev-env-doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/Trysac/u175-dev-env-doctor/actions/workflows/ci.yml)
+New contributors lose hours to the wrong tool versions, missing environment variables, or missing files. Existing onboarding guides are frequently outdated, and custom verification scripts are often platform-specific and parse version output inaccurately. `dev-env-doctor` provides a portable, dependency-free verification engine that validates development environments against a declarative JSON configuration, ensuring deterministic outcomes for both CI and local developer setups.
 
-Diagnose a development environment from a JSON config: required tools and version ranges, environment variables and files, with an injectable command runner and CI exit codes
+## Installation
 
-## Problem
-
-Describe in two or three sentences the concrete problem this utility solves, who hits it, and what
-they do today without it. Replace this paragraph when the first real feature lands.
-
-## Install
-
-```sh
-go get github.com/Trysac/u175-dev-env-doctor
+```bash
+go install github.com/Trysac/u175-dev-env-doctor/cmd/dev-env-doctor@latest
 ```
-
-Requires Go 1.23 or newer. No dependencies outside the standard library.
 
 ## Usage
 
@@ -25,31 +14,42 @@ Requires Go 1.23 or newer. No dependencies outside the standard library.
 package main
 
 import (
-	"errors"
-	"fmt"
-
+	"context"
+	"os"
+	"strings"
 	"github.com/Trysac/u175-dev-env-doctor"
 )
 
 func main() {
-	// Normalize trims surrounding whitespace and lower-cases the text.
-	out, _ := devenvdoctor.Normalize("  Hello World ")
-	fmt.Println(out) // -> "hello world"
-
-	// Blank input is rejected explicitly instead of returning an empty string.
-	if _, err := devenvdoctor.Normalize("   "); errors.Is(err, devenvdoctor.ErrBlank) {
-		fmt.Println("rejected:", err)
-	}
+	cfg, _ := devenvdoctor.LoadConfig(strings.NewReader(jsonConfig)) // Load from reader
+	ctx := context.Background()
+	results := devenvdoctor.Check(ctx, cfg, devenvdoctor.Deps{
+		Runner: devenvdoctor.NewExecRunner(),
+		Getenv: os.LookupEnv,
+		FS:     os.DirFS("."),
+	})
 }
 ```
 
-## Documentation
+## Public API Summary
 
-- [Architecture](docs/ARCHITECTURE.md) and [decisions](docs/decisions/)
-- [Testing](docs/TESTING.md) and [security](docs/SECURITY.md)
-- [Project record](docs/PROJECT.md) and [stack](docs/STACK.md)
-- [Changelog](CHANGELOG.md) and [contributing guide](CONTRIBUTING.md)
+- `LoadConfig(r io.Reader) (Config, error)`: Parses JSON, validates schema, and compiles regex patterns.
+- `Check(ctx context.Context, cfg Config, deps Deps) Report`: Executes verification logic based on injected dependencies.
+- `CompareVersions(a, b string) (int, error)`: Compares SemVer-like strings (1-3 segments).
+- `NewExecRunner() Runner`: Returns the production `Runner` implementation using `os/exec`.
+- **Errors**: `ErrNotFound`, `ErrInvalidVersion`, `ErrInvalidConfig` are exported for error handling.
 
-## License
+## Limits and Options
 
-[MIT](LICENSE) (c) 2026 Miguel Gomez
+- **Config Size**: Limited to 1 MiB.
+- **Output Buffering**: 64 KiB limit for command output.
+- **Tool Execution**: Per-tool `timeout_ms` (default 5000ms).
+- **Formats**: Supports `text` and `json` outputs.
+
+## Why not manual scripts?
+
+Unlike ad-hoc shell scripts, `dev-env-doctor` provides a portable binary that enforces strict, exact version comparisons (preventing loose parsing bugs), maintains a consistent exit code convention for CI, and provides machine-readable diagnostic reports.
+
+## Security
+
+See [docs/SECURITY.md](docs/SECURITY.md) for the threat model and limits.
