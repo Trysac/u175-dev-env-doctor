@@ -1,5 +1,6 @@
-// Package devenvdoctor is a small, dependency-free Go library: Diagnose a development environment from a JSON config: required tools and version ranges, environment variables and files, with an injectable command runner and CI exit codes
+// Package devenvdoctor inspects and validates development environments
+// against declarative JSON specifications.
 //
-// The public API is every exported identifier of this root package. Functions are pure: they do
-// no I/O, keep no global mutable state and report invalid input through returned errors.
+// It verifies required CLI tools, semantic/decimal versions, environment
+// variables, and project files using an injectable runner and filesystem.
 package devenvdoctor

@@ -1,20 +1,9 @@
-# Security notes
+# Security and Threat Model
 
-## Threat model
+## Threat Model
 
-`github.com/Trysac/u175-dev-env-doctor` is a pure library without I/O. The main risks are:
-
-- **Supply chain**: a compromised dependency or CI action. Mitigation: standard library only,
-  `go.sum` verification, `govulncheck` in the local gates, Dependabot weekly updates, actions
-  pinned by commit SHA, minimal workflow permissions.
-- **Leaked secrets**: tokens committed by mistake. Mitigation: `gitleaks` runs in the local gates
-  and in CI; `.env` files are git-ignored.
-- **Untrusted input**: callers may pass hostile strings. Mitigation: validate input and return
-  explicit errors; never use `unsafe` or `os/exec` with untrusted data.
-
-## Publishing
-
-Releases are git tags served through the Go module proxy and checksum database. No registry token
-is stored in the repository.
-
-To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+- **Denial of Service (Configuration)**: The `LoadConfig` function utilizes `io.LimitReader` to strictly reject configuration inputs exceeding 1 MiB.
+- **Resource Exhaustion**: `ExecRunner` caps command stdout/stderr buffers at 64 KiB to prevent memory exhaustion.
+- **Command Injection**: `ExecRunner` executes commands directly via `os/exec.CommandContext` without invoking shell interpolation (i.e., it does not use `sh -c` or `cmd.exe /c`), preventing shell injection attacks.
+- **Process Control**: Every tool execution is wrapped in a `context.Context` with a configurable timeout (default 5,000 ms) to prevent hanging processes.
+- **Path Traversal**: `LoadConfig` validates file paths, rejecting any paths that use absolute references or directory traversal patterns (`..`).
